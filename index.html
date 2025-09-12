@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Análisis por Binning (Rangos) — Réplica Excel → JS</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="container">
+    <h1>Análisis de Datos con Binning</h1>
+    <p class="subtitle">Réplica desde Excel. Ingresa el <strong>Factor de multiplicación</strong> y recalcula.</p>
+  </header>
+
+  <section class="container card">
+    <div class="controls">
+      <label for="factor">Factor de multiplicación de los coeficientes</label>
+      <input id="factor" type="number" step="0.01" value="10" />
+      <button id="recalcular">Recalcular</button>
+      <button id="exportCSV">Exportar CSV</button>
+    </div>
+
+    <div class="grid grid-2">
+      <div>
+        <h3>Coeficientes (escalados por el Factor)</h3>
+        <div id="coeficientesTabla" class="table-scroll"></div>
+      </div>
+
+      <div>
+        <h3>Parámetros</h3>
+        <ul class="bullets">
+          <li>Número de puntos X: <span id="infoNPuntos"></span></li>
+          <li>X: inicio=<span id="infoXmin"></span>, fin=<span id="infoXmax"></span>, paso=<span id="infoXstep"></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="container card">
+    <h2>Datos Calculados</h2>
+    <div class="table-tabs">
+      <button class="tab-btn active" data-tab="tabla-datos">X, Y1..Y7 y Sumatoria</button>
+      <button class="tab-btn" data-tab="tabla-normalizado">Normalización (X norm, Y norm)</button>
+    </div>
+    <div id="tabla-datos" class="tab-pane active table-scroll"></div>
+    <div id="tabla-normalizado" class="tab-pane table-scroll"></div>
+  </section>
+
+  <section class="container card">
+    <h2>Gráficos</h2>
+    <div class="charts-grid">
+      <div>
+        <h3>Y Normalizado</h3>
+        <canvas id="chartYNorm" class="chart-canvas"></canvas>
+      </div>
+      <div>
+        <h3>Combinado (Y Normalizado + Frec. Rangos 0.1)</h3>
+        <canvas id="chartCombo" class="chart-canvas"></canvas>
+      </div>
+      <div>
+        <h3>Rangos 0.1 (Frecuencia)</h3>
+        <canvas id="chartBin01" class="chart-canvas"></canvas>
+      </div>
+      <div>
+        <h3>Rangos 0.05 (Frecuencia)</h3>
+        <canvas id="chartBin005" class="chart-canvas"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="container card">
+    <h2>Tablas de Binning</h2>
+    <div class="grid grid-2">
+      <div>
+        <h3>Tabla Y por rango 0.1</h3>
+        <div id="tablaBin01" class="table-scroll"></div>
+      </div>
+      <div>
+        <h3>Tabla Y por rango 0.05</h3>
+        <div id="tablaBin005" class="table-scroll"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="container">
+    <p>Entrega: página local y enlace GitHub Pages. Código preparado por tu equipo.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
