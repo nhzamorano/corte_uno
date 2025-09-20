@@ -1,95 +1,165 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Análisis por Binning (Rangos) — Réplica Excel → JS</title>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisis de Datos con Binning (Rangos)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-  <header class="container">
-    <h1>Análisis de Datos con Binning</h1>
-    <p class="subtitle">Réplica desde Excel. Ingresa el <strong>Factor de multiplicación</strong> y recalcula.</p>
-  </header>
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-medium text-white mb-2">Analisis de Datos con Binning</h1>
+            <h2 class="text-3xl font-medium text-white mb-2">Replica desde Excel. Ingresa el Factor de multiplicación y recalcula.</h2>
+            <p class="text-3xl font-medium text-white mb-2">Natanael Herrera</p>
+            <p class="text-3xl font-medium text-white mb-2">Unilibre Cali</p>
+        </header>
+        <div class="bg-darkGreen p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-medium text-white mb-4">Factor de multiplicación de los coeficientes:</h2>
+            <div class="flex items-center space-x-4">
+                <input type="number" value="10" id="factorMultiplicador"
+                    class="w-20 px-2 py-1 border border-gray-300 rounded text-center font-bold text-black focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="recalcular"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-900 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Recalcular
+                </button>
+            </div>
+        </div>
+        <div class="bg-darkGreen p-6 rounded-lg shadow-md mb-8 overflow-x-auto">
+            <h2 class="text-xl font-medium text-white mb-4">Coeficientes</h2>
+            <div class="grid grid-cols-7 gap-4 mb-4" id="coeficientesCabecera">
+                <div class="text-center font-medium text-white">Y1</div>
+                <div class="text-center font-medium text-white">Y2</div>
+                <div class="text-center font-medium text-white">Y3</div>
+                <div class="text-center font-medium text-white">Y4</div>
+                <div class="text-center font-medium text-white">Y5</div>
+                <div class="text-center font-medium text-white">Y6</div>
+                <div class="text-center font-medium text-white">Y7</div>
+            </div>
+            <div class="grid grid-cols-7 gap-4 font-medium text-black" id="coeficientesTabla">
+            </div>
+        </div>
+        <div class="container mx-auto px-4 py-8">
+            <div class="bg-darkGreen p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-medium text-white mb-4">Datos Generados</h2>
+                <div class="scroll-container relative overflow-auto max-h-96 border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th
+                                    class="sticky-corner px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-20">
+                                    X</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y1</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y2</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y3</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y4</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y5</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y6</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y7</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y sumatoria</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    X normalizado</th>
+                                <th
+                                    class="sticky-header px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                                    Y normalizado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y font-bold text-black" id="tabla-datos">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>     
+        <div class="mt-8 bg-darkGreen p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-semibold text-white-700 mb-4">Rango de Valores</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="tablaRangoValores">
+            
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-darkGreen p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold text-white-700 mb-4">Gráfico de Y normalizado</h2>
+                <canvas id="lineChart" height="200"></canvas>
+            </div>
+        </div>
+        <div class="flex gap-6">
+            <div class="bg-darkGreen rounded-lg shadow-md p-4 flex-1">
+                <h2 class="text-lg font-semibold mb-3 text-white-700">Tabla 1 - Y promedio con rango de 0.1</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">Xa</th>
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">Xb</th>
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">X centro</th>
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">Y promedio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPromedio1">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-  <section class="container card">
-    <div class="controls">
-      <label for="factor">Factor de multiplicación de los coeficientes</label>
-      <input id="factor" type="number" step="0.01" value="10" />
-      <button id="recalcular">Recalcular</button>
-      <button id="exportCSV">Exportar CSV</button>
+            <div class="bg-darkGreen rounded-lg shadow-md p-4 flex-1">
+                <h2 class="text-lg font-semibold mb-3 text-white-700">Tabla 2 - Y promedio con rango de 0.05</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">Xa</th>
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">Xb</th>
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">X centro</th>
+                                <th class="px-4 py-2 text-left text-sm font-medium text-white-700">Y promedio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPromedio2">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-center text-white-700 mb-8 mt-8">Graficas de Tabla 1 y 2</h1>
+        
+        <div class="flex flex-col md:flex-row gap-6">
+            <div class="bg-darkGreen p-6 rounded-lg shadow-md flex-1">
+                <h2 class="text-xl font-semibold text-white-700 mb-4 text-center">Y promedio, rango 0.1</h2>
+                <canvas id="ventasChart" class="w-full h-64 md:h-80"></canvas>
+            </div>            
+            <div class="bg-darkGreen p-6 rounded-lg shadow-md flex-1">
+                <h2 class="text-xl font-semibold text-white-700 mb-4 text-center">Y promedio, rango 0.05</h2>
+                <canvas id="distribucionChart" class="w-full h-64 md:h-80"></canvas>
+            </div>
+        </div>
     </div>
 
-    <div class="grid grid-2">
-      <div>
-        <h3>Coeficientes (escalados por el Factor)</h3>
-        <div id="coeficientesTabla" class="table-scroll"></div>
-      </div>
-
-      <div>
-        <h3>Parámetros</h3>
-        <ul class="bullets">
-          <li>Número de puntos X: <span id="infoNPuntos"></span></li>
-          <li>X: inicio=<span id="infoXmin"></span>, fin=<span id="infoXmax"></span>, paso=<span id="infoXstep"></span></li>
-        </ul>
-      </div>
+    <div class="max-w-4xl mx-auto my-8 bg-darkGreen p-4 rounded-xl shadow">
+        <h2 class="text-xl font-bold text-white-700 mb-4">Gráfica Combinada</h2>
+        <canvas id="combinedChart" class="w-full"></canvas>
     </div>
-  </section>
-
-  <section class="container card">
-    <h2>Datos Calculados</h2>
-    <div class="table-tabs">
-      <button class="tab-btn active" data-tab="tabla-datos">X, Y1..Y7 y Sumatoria</button>
-      <button class="tab-btn" data-tab="tabla-normalizado">Normalización (X norm, Y norm)</button>
-    </div>
-    <div id="tabla-datos" class="tab-pane active table-scroll"></div>
-    <div id="tabla-normalizado" class="tab-pane table-scroll"></div>
-  </section>
-
-  <section class="container card">
-    <h2>Gráficos</h2>
-    <div class="charts-grid">
-      <div>
-        <h3>Y Normalizado</h3>
-        <canvas id="chartYNorm" class="chart-canvas"></canvas>
-      </div>
-      <div>
-        <h3>Combinado (Y Normalizado + Frec. Rangos 0.1)</h3>
-        <canvas id="chartCombo" class="chart-canvas"></canvas>
-      </div>
-      <div>
-        <h3>Rangos 0.1 (Frecuencia)</h3>
-        <canvas id="chartBin01" class="chart-canvas"></canvas>
-      </div>
-      <div>
-        <h3>Rangos 0.05 (Frecuencia)</h3>
-        <canvas id="chartBin005" class="chart-canvas"></canvas>
-      </div>
-    </div>
-  </section>
-
-  <section class="container card">
-    <h2>Tablas de Binning</h2>
-    <div class="grid grid-2">
-      <div>
-        <h3>Tabla Y por rango 0.1</h3>
-        <div id="tablaBin01" class="table-scroll"></div>
-      </div>
-      <div>
-        <h3>Tabla Y por rango 0.05</h3>
-        <div id="tablaBin005" class="table-scroll"></div>
-      </div>
-    </div>
-  </section>
-
-  <footer class="container">
-    <p>Entrega: página local y enlace GitHub Pages. Código preparado por tu equipo.</p>
-  </footer>
-
-  <script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

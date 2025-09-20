@@ -1,261 +1,261 @@
-// ================= CONFIG ==================
-const X_START = 0;
-const X_END = 39;   // inclusive -> 40 puntos (0..39)
-const X_STEP = 1;
+let coeficientes = [];
+let charts = {};
+let chartInstance;
+let rangoParaX = [];
+let rangoParaY = [];
+let xNormalizado = [];
+let yNormalizado = [];
+let graph = [];
 
-const N_SERIES = 7;      // Y1..Y7
-const POLY_DEGREE = 6;   // cantidad de coeficientes por serie - 1
+const myButton = document.querySelector('#recalcular');
+myButton.addEventListener('click', recalc);
 
-// COEFICIENTES
-const BASE_COEFFICIENTS = [
-  [-5.818335388271143, 4.212906476248181, 3.6189239903600257, -0.6424225428138108, -9.052424789207494, 4.0804038873483295, -6.300358037449846],
-  [ 3.8268568281914837, -4.464344951901706, -2.8086530257356013, 7.280365764365516, -0.8564507137455302, -7.707713489182316, 3.9951114701223],
-  [ 6.521577, 6.7726, -1.9691, 3.558, -5.1, 1.8, 0.9],
-  [-2.1, 1.9, 3.2, -4.6, 2.5, -1.3, 0.6],
-  [ 1.4, -2.3, 1.9, 0.2, -0.9, 0.4, -0.15],
-  [-0.9, 0.8, -0.5, 0.3, -0.2, 0.1, -0.04],
-  [ 0.7, -0.6, 0.5, -0.4, 0.3, -0.2, 0.1],
-];
+function recalc(){
+    const num = document.querySelector('#factorMultiplicador').value;
 
-// =============== UTIL ===============
-const $ = (sel) => document.querySelector(sel);
-function fmt(n){
-  if (typeof n !== "number" || !isFinite(n)) return n ?? "";
-  return Math.abs(n) < 1e-9 ? "0" : n.toLocaleString("es-CO",{maximumFractionDigits:6});
-}
-function toTable(headers, rows){
-  let thead = "<thead><tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr></thead>";
-  let tbody = "<tbody>" + rows.map(r => "<tr>" + r.map((c,i)=> i===0?`<td>${c}</td>`:`<td>${fmt(c)}</td>`).join("") + "</tr>").join("") + "</tbody>";
-  return `<table>${thead}${tbody}</table>`;
-}
-function rangeX(start,end,step){
-  const out = [];
-  for (let x=start; x<=end; x+=step) out.push(x);
-  return out;
-}
-function evalPoly(coeffs, x){
-  let y=0, xp=1;
-  for (let i=0;i<coeffs.length;i++){
-    y += coeffs[i]*xp;
-    xp *= x;
-  }
-  return y;
-}
-function minMax(arr){
-  let mn = Infinity, mx = -Infinity;
-  for (const v of arr){ if (v < mn) mn = v; if (v > mx) mx = v; }
-  return [mn, mx];
-}
-function normalizeMinMax(arr){
-  const [mn,mx] = minMax(arr);
-  if (!isFinite(mn) || !isFinite(mx) || mx === mn) return arr.map(()=>0.5);
-  return arr.map(v => (v - mn) / (mx - mn));
-}
-function binCounts(values, width){
-  const nBins = Math.ceil(1/width);
-  const counts = Array.from({length:nBins}, ()=>0);
-  const edges = [];
-  for (let i=0;i<nBins;i++){
-    edges.push([i*width, Math.min(1, (i+1)*width)]);
-  }
-  for (const v of values){
-    let idx = Math.floor(v/width);
-    if (idx < 0) idx = 0;
-    if (idx >= nBins) idx = nBins - 1;
-    counts[idx] += 1;
-  }
-  return { edges, counts, width };
+    tablaDeCoeficientes(num);
+
+    tablaDeDatosGenerados();
+
+    const { valorMinX, valorMaxX, valorMinY, valorMaxY } = rangoValores();
+
+    tablaDeDatosGenerados(valorMinX, valorMaxX, valorMinY, valorMaxY);
+
+    graficos(graph, 'orange', 'Y normalizado', 'lineChart')
+
+    const puntos1 = tabla1Grafico2(xNormalizado, yNormalizado);
+    const puntos2 = tabla2Grafico2(xNormalizado, yNormalizado);
+
+    graficos(puntos1, 'blue', 'Promedio Y', 'ventasChart');
+    graficos(puntos2, 'red', 'Promedio Y', 'distribucionChart');
+
+    graficosUnidos([
+        { data: graph, color: 'orange', label: 'Y normalizado' },
+        { data: puntos1, color: 'blue', label: 'Promedio Y 1' },
+        { data: puntos2, color: 'red', label: 'Promedio Y 2' }
+    ], 'combinedChart');
 }
 
-// ============= CÁLCULOS PRINCIPALES =============
-function computeAll(factor){
-  // escalar coeficientes
-  const scaled = BASE_COEFFICIENTS.map(row => row.map(c => c * factor));
 
-  // X
-  const X = rangeX(X_START, X_END, X_STEP);
+function tablaDeCoeficientes(numeroEnviado){
+    const coeficientesTabla = document.querySelector('#coeficientesTabla');
 
-  // calcular Ys
-  const Ys = [];
-  for (let k=0;k<N_SERIES;k++){
-    const coeffs = scaled[k];
-    Ys.push(X.map(x => evalPoly(coeffs, x)));
-  }
+    coeficientesTabla.innerHTML = "";
+    coeficientes = [];
 
-  // Y sum
-  const Ysum = X.map((_,i) => {
-    let s = 0;
-    for (let k=0;k<N_SERIES;k++) s += Ys[k][i];
-    return s;
-  });
+    for (let index = 1; index <= 21; index++) {
+        let resultadoCoeficiente = (Math.random() -  Math.random()) * numeroEnviado;
+        coeficientes.push(resultadoCoeficiente);
 
-  // normalizaciones
-  const Xnorm = normalizeMinMax(X);
-  const Ynorm = normalizeMinMax(Ysum);
-
-  // binning sobre Ynorm
-  const bin01 = binCounts(Ynorm, 0.1);
-  const bin005 = binCounts(Ynorm, 0.05);
-
-  return { scaled, X, Ys, Ysum, Xnorm, Ynorm, bin01, bin005 };
-}
-
-// ============== RENDER TABLAS ==============
-function renderCoefTable(scaled){
-  const headers = ["Serie"].concat(scaled[0].map((_,i)=>`a${i}`));
-  const rows = scaled.map((r,i)=> [ `Y${i+1}`, ...r ]);
-  $("#coeficientesTabla").innerHTML = toTable(headers, rows);
-}
-function renderDatosTabla(X, Ys, Ysum){
-  const headers = ["X"].concat(Array.from({length:N_SERIES}, (_,i)=>`Y${i+1}`)).concat(["Y sumatoria"]);
-  const rows = X.map((x,i)=> [ x, ...Ys.map(yk=>yk[i]), Ysum[i] ]);
-  $("#tabla-datos").innerHTML = toTable(headers, rows);
-}
-function renderNormalizadoTabla(Xnorm, Ynorm){
-  const headers = ["X norm", "Y norm"];
-  const rows = Xnorm.map((xn,i)=> [ xn, Ynorm[i] ]);
-  $("#tabla-normalizado").innerHTML = toTable(headers, rows);
-}
-function renderBinTabla(containerId, bin){
-  const headers = ["Rango", "Frecuencia"];
-  const rows = bin.edges.map((e,i)=> [ `[${fmt(e[0])}, ${fmt(e[1])}${i===bin.edges.length-1?']':')'}`, bin.counts[i] ]);
-  document.querySelector(containerId).innerHTML = toTable(headers, rows);
-}
-
-// ============== GRÁFICOS (Chart.js) ==============
-let chartYNorm = null, chartCombo = null, chartBin01 = null, chartBin005 = null;
-
-function makeLineChart(ctx, labels, data, label){
-  return new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{ label, data, fill:false, tension:0.25 }]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false, animation:false,
-      scales: { x: { ticks:{maxRotation:0, autoSkip:true} } }
+        const div = document.createElement("div");
+        div.innerHTML = `
+        <div class="text-center p-3 bg-blue-50 rounded" id="idCoeficiente-${index}">${resultadoCoeficiente.toFixed(4)}</div>
+        `;
+        coeficientesTabla.appendChild(div);
     }
-  });
-}
-function makeBarChart(ctx, labels, data, label){
-  return new Chart(ctx, {
-    type: "bar",
-    data: { labels, datasets: [{ label, data }] },
-    options: { responsive:true, maintainAspectRatio:false, animation:false }
-  });
 }
 
-function densifyBinsToSeries(Ynorm, bin){
-  // para cada punto i devolvemos el conteo del bin al que pertenece su Ynorm
-  const width = bin.width;
-  const nBins = bin.counts.length;
-  return Ynorm.map(v => {
-    let idx = Math.floor(v/width);
-    if (idx < 0) idx = 0;
-    if (idx >= nBins) idx = nBins - 1;
-    return bin.counts[idx];
-  });
+function tablaDeDatosGenerados(valorMinX, valorMaxX, valorMinY, valorMaxY){
+    const tablaDatos = document.querySelector('#tabla-datos');
+
+    tablaDatos.innerHTML = '';
+    rangoParaX = [];
+    rangoParaY = [];
+    xNormalizado = [];
+    yNormalizado = [];
+    graph = [];
+
+    for(let i = 0; i <= 360; i++){
+    
+        let resultadoY1 = coeficientes[0] * Math.sin(( coeficientes[7] * i + coeficientes[14]) * Math.PI / 180);
+        let resultadoY2 = coeficientes[1] * Math.sin(( coeficientes[8] * i + coeficientes[15]) * Math.PI / 180);
+        let resultadoY3 = coeficientes[2] * Math.sin(( coeficientes[9] * i + coeficientes[16]) * Math.PI / 180);
+        let resultadoY4 = coeficientes[3] * Math.sin(( coeficientes[10] * i + coeficientes[17]) * Math.PI / 180);
+        let resultadoY5 = coeficientes[4] * Math.sin(( coeficientes[11] * i + coeficientes[18]) * Math.PI / 180);
+        let resultadoY6 = coeficientes[5] * Math.sin(( coeficientes[12] * i + coeficientes[19]) * Math.PI / 180);
+        let resultadoY7 = coeficientes[6] * Math.sin(( coeficientes[13] * i + coeficientes[20]) * Math.PI / 180);
+        let sumatoriaY = resultadoY1 + resultadoY2 + resultadoY3 + resultadoY4 + resultadoY5 + resultadoY6 + resultadoY7;
+        let normalizadoX = (i-valorMinX)/(valorMaxX-valorMinX);
+        let normalizadoY = (sumatoriaY-valorMinY)/(valorMaxY-valorMinY);
+
+        rangoParaX.push(i);
+        rangoParaY.push(sumatoriaY)
+        graph.push({x: normalizadoX, y: normalizadoY});
+        xNormalizado.push(normalizadoX);
+        yNormalizado.push(normalizadoY)
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="sticky-column px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${i}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${resultadoY1.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${resultadoY2.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${resultadoY3.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${resultadoY4.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${resultadoY5.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${resultadoY6.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-black">${resultadoY7.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium font-bold text-green-600">${sumatoriaY.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium font-bold text-purple-600">${normalizadoX.toFixed(4)}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium font-bold text-purple-600">${normalizadoY.toFixed(4)}</td>
+        `;
+
+        tablaDatos.appendChild(tr);
+    }
 }
 
-function renderCharts(X, Ynorm, bin01, bin005){
-  // Y Normalizado
-  if (chartYNorm) chartYNorm.destroy();
-  chartYNorm = makeLineChart(document.getElementById("chartYNorm").getContext("2d"), X, Ynorm, "Y normalizado");
+function rangoValores(){
+    let valorMinX = Math.min(...rangoParaX);
+    let valorMaxX = Math.max(...rangoParaX);
+    let valorMinY = Math.min(...rangoParaY);
+    let valorMaxY = Math.max(...rangoParaY);
+    
+    const tablaRangoValores =  document.querySelector('#tablaRangoValores');
+    tablaRangoValores.innerHTML = '';
+    const html = `
+    <div class="bg-blue-50 p-4 rounded-lg">
+        <p class="text-sm font-bold text-emerald-500">X minimo</p>
+        <p class="text-2xl font-bold text-emerald-500">${valorMinX}</p>
+    </div>
+    <div class="bg-green-50 p-4 rounded-lg">
+        <p class="text-sm font-bold text-cyan-500">X maximo</p>
+        <p class="text-2xl font-bold text-cyan-500">${valorMaxX}</p>
+    </div>
+    <div class="bg-purple-50 p-4 rounded-lg">
+        <p class="text-sm font-bold text-amber-500">Y minimo</p>
+        <p class="text-2xl font-bold text-amber-500">${valorMinY.toFixed(4)}</p>
+    </div>
+    <div class="bg-red-50 p-4 rounded-lg">
+        <p class="text-sm font-bold text-blue-500">Y maximo</p>
+        <p class="text-2xl font-bold text-blue-500">${valorMaxY.toFixed(4)}</p>
+    </div>
+`;
 
-  // Bins 0.1
-  if (chartBin01) chartBin01.destroy();
-  const labels01 = bin01.edges.map(e => `${e[0].toFixed(2)}–${e[1].toFixed(2)}`);
-  chartBin01 = makeBarChart(document.getElementById("chartBin01").getContext("2d"), labels01, bin01.counts, "Frecuencia (0.1)");
+    document.querySelector('#tablaRangoValores').insertAdjacentHTML('beforeend', html);
 
-  // Bins 0.05
-  if (chartBin005) chartBin005.destroy();
-  const labels005 = bin005.edges.map(e => `${e[0].toFixed(2)}–${e[1].toFixed(2)}`);
-  chartBin005 = makeBarChart(document.getElementById("chartBin005").getContext("2d"), labels005, bin005.counts, "Frecuencia (0.05)");
+    return { valorMinX, valorMaxX, valorMinY, valorMaxY };
+}
 
-  // Combinado: linea Ynorm + barras densificadas de bin01
-  if (chartCombo) chartCombo.destroy();
-  chartCombo = new Chart(document.getElementById("chartCombo").getContext("2d"), {
-    type: "bar",
+
+function graficos(datos, color, etiqueta, id) {
+  const ctx = document.getElementById(id).getContext('2d');
+
+  if (charts[id]) {
+    charts[id].destroy();
+  }
+
+  charts[id] = new Chart(ctx, {
+    type: 'line',
     data: {
-      labels: X,
-      datasets: [
-        { type:"line", label:"Y normalizado", data:Ynorm, yAxisID:"y1", tension:0.25, fill:false },
-        { type:"bar", label:"Frecuencia (bin 0.1) (por punto)", data: densifyBinsToSeries(Ynorm, bin01), yAxisID:"y2", backgroundColor:"rgba(99,132,255,0.5)" }
-      ]
+      datasets: [{
+        label: etiqueta,
+        data: datos,
+        borderColor: color,
+        fill: false
+      }]
     },
     options: {
-      responsive:true, maintainAspectRatio:false, animation:false,
-      scales:{
-        y1:{ type:"linear", position:"left", min:0, max:1, title:{display:true,text:"Y norm"} },
-        y2:{ type:"linear", position:"right", title:{display:true, text:"Frecuencia (bin)"} }
+      scales: {
+        x: { type: 'linear', position: 'bottom' }
       }
     }
   });
 }
 
-// ============== INTERACCIÓN ==============
-function updateInfo(X){
-  $("#infoNPuntos").textContent = X.length;
-  $("#infoXmin").textContent = X[0];
-  $("#infoXmax").textContent = X[X.length-1];
-  $("#infoXstep").textContent = X_STEP;
+function tabla1Grafico2(datoA,datoB){
+    let conjuntoDatos = {
+        Xa: [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+        Xb: [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+    }
+    const tablaPromedio1 = document.querySelector('#tablaPromedio1');
+    tablaPromedio1.innerHTML = '';
+
+    let puntos = [];
+
+    for (let i = 0; i < conjuntoDatos.Xa.length; i++) {
+        const xc = ((conjuntoDatos.Xa[i] + conjuntoDatos.Xb[i]) / 2).toFixed(2);
+        const promedio = promedioSiConjunto(datoB, datoA, conjuntoDatos.Xa[i], conjuntoDatos.Xb[i]);
+
+        puntos.push({x: parseFloat(xc), y: promedio});
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${conjuntoDatos.Xa[i]}</td>
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${conjuntoDatos.Xb[i]}</td>
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${xc}</td>
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${promedio}</td>
+        `;
+
+        tablaPromedio1.appendChild(tr);
+    }
+
+    return puntos;
 }
-function wireTabs(){
-  const tabs = document.querySelectorAll(".tab-btn");
-  tabs.forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      tabs.forEach(b=>b.classList.remove("active"));
-      document.querySelectorAll(".tab-pane").forEach(p=>p.classList.remove("active"));
-      btn.classList.add("active");
-      const id = btn.dataset.tab;
-      document.getElementById(id).classList.add("active");
+
+function tabla2Grafico2(datoA,datoB){
+    let conjuntoDatos = {
+        Xa: [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.60, 0.65, 0.70, 0.75, 0.8, 0.85, 0.9, 0.95],
+        Xb: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.60, 0.65, 0.70, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
+    }
+    const tablaPromedio2 = document.querySelector('#tablaPromedio2');
+    tablaPromedio2.innerHTML = '';
+
+    let puntos = [];
+
+    for (let i = 0; i < conjuntoDatos.Xa.length; i++) {
+        const xc = ((conjuntoDatos.Xa[i] + conjuntoDatos.Xb[i]) / 2).toFixed(2);
+        const promedio = promedioSiConjunto(datoB, datoA, conjuntoDatos.Xa[i], conjuntoDatos.Xb[i]);
+
+        puntos.push({x: parseFloat(xc), y: promedio});
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${conjuntoDatos.Xa[i]}</td>
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${conjuntoDatos.Xb[i]}</td>
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${xc}</td>
+            <td class="px-4 py-3 text-sm font-bold text-white-700">${promedio}</td>
+        `;
+
+        tablaPromedio2.appendChild(tr);
+    }
+
+    return puntos;
+}
+
+function promedioSiConjunto(valores, criterios, y, z) {
+  let filtrados = valores.filter((_, i) => criterios[i] >= y && criterios[i] <= z);
+
+  if (filtrados.length === 0) return null;
+
+  let suma = filtrados.reduce((acc, v) => acc + v, 0);
+  return parseFloat((suma / filtrados.length).toFixed(4));
+}
+
+function graficosUnidos(datasets, canvasId) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+
+    if (window.combinedInstance) {
+        window.combinedInstance.destroy();
+    }
+
+    window.combinedInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: datasets.map(ds => ({
+                label: ds.label,
+                data: ds.data,
+                borderColor: ds.color,
+                backgroundColor: ds.color,
+                fill: false,
+                tension: 0.3
+            }))
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: 'linear', position: 'bottom' },
+                y: { beginAtZero: false }
+            }
+        }
     });
-  });
 }
-
-function exportCSV(rows, filename="datos_export.csv"){
-  const csv = rows.map(r => r.map(c => (typeof c === "string"? `"${c.replace(/"/g,'""')}"` : c)).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function recalc(){
-  const factor = parseFloat($("#factor").value || "1");
-  const { scaled, X, Ys, Ysum, Xnorm, Ynorm, bin01, bin005 } = computeAll(factor);
-
-  renderCoefTable(scaled);
-  renderDatosTabla(X, Ys, Ysum);
-  renderNormalizadoTabla(Xnorm, Ynorm);
-  renderBinTabla("#tablaBin01", bin01);
-  renderBinTabla("#tablaBin005", bin005);
-  renderCharts(X, Ynorm, bin01, bin005);
-  updateInfo(X);
-
-  // Prepara array para export CSV (X, Y1..Y7, Ysum, Xnorm, Ynorm)
-  const headers = ["X", ...Array.from({length:N_SERIES},(_,i)=>`Y${i+1}`), "Ysum", "Xnorm", "Ynorm"];
-  const rows = [headers];
-  for (let i=0;i<X.length;i++){
-    const row = [X[i]];
-    for (let k=0;k<N_SERIES;k++) row.push(Ys[k][i]);
-    row.push(Ysum[i], Xnorm[i], Ynorm[i]);
-    rows.push(row);
-  }
-  // Retornamos rows para permitir export si se desea
-  return rows;
-}
-
-// ============== BOOTSTRAP ==============
-document.addEventListener("DOMContentLoaded", ()=>{
-  wireTabs();
-  $("#recalcular").addEventListener("click", ()=> recalc());
-  $("#exportCSV").addEventListener("click", ()=>{
-    const rows = recalc(); // recalcula y obtiene rows actuales
-    exportCSV(rows, "datos_binning.csv");
-  });
-  // primer render
-  recalc();
-});
+recalc();
